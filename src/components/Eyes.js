@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Animated, StyleSheet, PanResponder } from 'react-native';
+import { View, Animated, StyleSheet, Pressable } from 'react-native';
 
 export default function Eyes() {
     const blinkAnim1 = useRef(new Animated.Value(0)).current;
@@ -7,24 +7,6 @@ export default function Eyes() {
     const glowAnim1 = useRef(new Animated.Value(1)).current;
     const glowAnim2 = useRef(new Animated.Value(1)).current;
     const [winkEye, setWinkEye] = useState(null);
-
-    const panResponder = useRef(
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onStartShouldSetPanResponderCapture: () => true,
-            onMoveShouldSetPanResponder: () => false,
-            onPress: () => false,
-            onPressIn: (evt) => {
-                const { locationX, width } = evt.nativeEvent;
-                const screenWidth = width || 800;
-                if (locationX < screenWidth / 2) {
-                    triggerWink(1);
-                } else {
-                    triggerWink(2);
-                }
-            },
-        })
-    ).current;
 
     const triggerWink = (eye) => {
         setWinkEye(eye);
@@ -142,9 +124,12 @@ export default function Eyes() {
     });
 
     return (
-        <View style={styles.container} {...panResponder.panHandlers}>
-            {/* Left Eye */}
-            <View style={styles.eyeWrapper}>
+        <Pressable style={styles.container}>
+            {/* Left Eye - Tap to wink */}
+            <Pressable
+                style={styles.eyeWrapper}
+                onPress={() => triggerWink(1)}
+            >
                 <Animated.View
                     style={[
                         styles.eyeContainer,
@@ -166,10 +151,13 @@ export default function Eyes() {
                         <View style={styles.eye} />
                     </Animated.View>
                 </Animated.View>
-            </View>
+            </Pressable>
 
-            {/* Right Eye */}
-            <View style={styles.eyeWrapper}>
+            {/* Right Eye - Tap to wink */}
+            <Pressable
+                style={styles.eyeWrapper}
+                onPress={() => triggerWink(2)}
+            >
                 <Animated.View
                     style={[
                         styles.eyeContainer,
@@ -191,8 +179,8 @@ export default function Eyes() {
                         <View style={styles.eye} />
                     </Animated.View>
                 </Animated.View>
-            </View>
-        </View>
+            </Pressable>
+        </Pressable>
     );
 }
 

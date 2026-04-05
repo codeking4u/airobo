@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, StyleSheet, Pressable } from 'react-native';
 
-export default function Eyes() {
+export default function Eyes({ isListening = false, isSpeaking = false }) {
     const blinkAnim1 = useRef(new Animated.Value(0)).current;
     const blinkAnim2 = useRef(new Animated.Value(0)).current;
     const glowAnim1 = useRef(new Animated.Value(1)).current;
     const glowAnim2 = useRef(new Animated.Value(1)).current;
+    const listeningAnim = useRef(new Animated.Value(0)).current;
     const [winkEye, setWinkEye] = useState(null);
 
     const triggerWink = (eye) => {
@@ -103,6 +104,34 @@ export default function Eyes() {
         return () => blinkAnimation.stop();
     }, [blinkAnim1, blinkAnim2, glowAnim1, glowAnim2]);
 
+    // Listening state animation - pulse glow and brighten
+    useEffect(() => {
+        if (isListening || isSpeaking) {
+            const listeningPulse = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(listeningAnim, {
+                        toValue: 1,
+                        duration: 600,
+                        useNativeDriver: false,
+                    }),
+                    Animated.timing(listeningAnim, {
+                        toValue: 0,
+                        duration: 600,
+                        useNativeDriver: false,
+                    }),
+                ])
+            );
+            listeningPulse.start();
+            return () => listeningPulse.stop();
+        } else {
+            Animated.timing(listeningAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: false,
+            }).start();
+        }
+    }, [isListening, isSpeaking]);
+
     const eyelidHeight1 = blinkAnim1.interpolate({
         inputRange: [0, 1],
         outputRange: [150, 0],
@@ -121,6 +150,11 @@ export default function Eyes() {
     const shadowRadius2 = glowAnim2.interpolate({
         inputRange: [0.5, 1],
         outputRange: [10, 40],
+    });
+
+    const listeningGlowOpacity = listeningAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.5],
     });
 
     return (
@@ -144,7 +178,7 @@ export default function Eyes() {
                             styles.eyeGlow,
                             {
                                 shadowRadius: shadowRadius1,
-                                shadowOpacity: glowAnim1,
+                                shadowOpacity: Animated.add(glowAnim1, listeningGlowOpacity),
                             },
                         ]}
                     >
@@ -172,7 +206,7 @@ export default function Eyes() {
                             styles.eyeGlow,
                             {
                                 shadowRadius: shadowRadius2,
-                                shadowOpacity: glowAnim2,
+                                shadowOpacity: Animated.add(glowAnim2, listeningGlowOpacity),
                             },
                         ]}
                     >

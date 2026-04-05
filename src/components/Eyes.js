@@ -1,20 +1,71 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Animated, StyleSheet, PanResponder } from 'react-native';
 
 export default function Eyes() {
     const blinkAnim1 = useRef(new Animated.Value(0)).current;
     const blinkAnim2 = useRef(new Animated.Value(0)).current;
     const glowAnim1 = useRef(new Animated.Value(1)).current;
     const glowAnim2 = useRef(new Animated.Value(1)).current;
+    const [winkEye, setWinkEye] = useState(null);
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onStartShouldSetPanResponderCapture: () => true,
+            onMoveShouldSetPanResponder: () => false,
+            onPress: () => false,
+            onPressIn: (evt) => {
+                const { locationX, width } = evt.nativeEvent;
+                const screenWidth = width || 800;
+                if (locationX < screenWidth / 2) {
+                    triggerWink(1);
+                } else {
+                    triggerWink(2);
+                }
+            },
+        })
+    ).current;
+
+    const triggerWink = (eye) => {
+        setWinkEye(eye);
+        const targetAnim = eye === 1 ? blinkAnim1 : blinkAnim2;
+        const glowTargetAnim = eye === 1 ? glowAnim1 : glowAnim2;
+
+        Animated.parallel([
+            Animated.sequence([
+                Animated.timing(targetAnim, {
+                    toValue: 1,
+                    duration: 100,
+                    useNativeDriver: false,
+                }),
+                Animated.delay(100),
+                Animated.timing(targetAnim, {
+                    toValue: 0,
+                    duration: 100,
+                    useNativeDriver: false,
+                }),
+            ]),
+            Animated.sequence([
+                Animated.timing(glowTargetAnim, {
+                    toValue: 0.3,
+                    duration: 100,
+                    useNativeDriver: false,
+                }),
+                Animated.delay(100),
+                Animated.timing(glowTargetAnim, {
+                    toValue: 1,
+                    duration: 100,
+                    useNativeDriver: false,
+                }),
+            ]),
+        ]).start(() => setWinkEye(null));
+    };
 
     useEffect(() => {
-        // Natural blinking animation - eyelid closing effect
         const blinkAnimation = Animated.loop(
             Animated.sequence([
-                // Eyes fully open
                 Animated.delay(2000),
 
-                // Phase 1: Eyelid closing (top and bottom converging)
                 Animated.parallel([
                     Animated.timing(blinkAnim1, {
                         toValue: 1,
@@ -38,10 +89,8 @@ export default function Eyes() {
                     }),
                 ]),
 
-                // Eyes fully closed
                 Animated.delay(100),
 
-                // Phase 2: Eyelid opening (top and bottom separating)
                 Animated.parallel([
                     Animated.timing(blinkAnim1, {
                         toValue: 0,
@@ -72,7 +121,6 @@ export default function Eyes() {
         return () => blinkAnimation.stop();
     }, [blinkAnim1, blinkAnim2, glowAnim1, glowAnim2]);
 
-    // Eyelid height - when blink is 0, height is full; when blink is 1, height is 0 (closed)
     const eyelidHeight1 = blinkAnim1.interpolate({
         inputRange: [0, 1],
         outputRange: [150, 0],
@@ -83,7 +131,6 @@ export default function Eyes() {
         outputRange: [150, 0],
     });
 
-    // Glow shadow effect
     const shadowRadius1 = glowAnim1.interpolate({
         inputRange: [0.5, 1],
         outputRange: [10, 40],
@@ -95,7 +142,7 @@ export default function Eyes() {
     });
 
     return (
-        <View style={styles.container}>
+        <View style={styles.container} {...panResponder.panHandlers}>
             {/* Left Eye */}
             <View style={styles.eyeWrapper}>
                 <Animated.View

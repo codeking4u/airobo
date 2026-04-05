@@ -2,55 +2,57 @@ import React, { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
 
 export default function Eyes() {
-    const glowAnim1 = useRef(new Animated.Value(0)).current;
-    const glowAnim2 = useRef(new Animated.Value(0)).current;
-    const scaleAnim1 = useRef(new Animated.Value(1)).current;
-    const scaleAnim2 = useRef(new Animated.Value(1)).current;
+    const blinkAnim1 = useRef(new Animated.Value(0)).current;
+    const blinkAnim2 = useRef(new Animated.Value(0)).current;
+    const glowAnim1 = useRef(new Animated.Value(1)).current;
+    const glowAnim2 = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
-        // Blinking animation - also affects glow
+        // Natural blinking animation - eyelid closing effect
         const blinkAnimation = Animated.loop(
             Animated.sequence([
-                // Eyes open - full glow
-                Animated.timing(glowAnim1, {
-                    toValue: 1,
-                    duration: 100,
-                    useNativeDriver: false,
-                }),
-                Animated.timing(glowAnim2, {
-                    toValue: 1,
-                    duration: 100,
-                    useNativeDriver: false,
-                }),
-                // Eyes stay open for a bit
-                Animated.delay(1500),
-                // Eyes closing - glow fades
+                // Eyes fully open
+                Animated.delay(2000),
+
+                // Phase 1: Eyelid closing (top and bottom converging)
                 Animated.parallel([
+                    Animated.timing(blinkAnim1, {
+                        toValue: 1,
+                        duration: 150,
+                        useNativeDriver: false,
+                    }),
+                    Animated.timing(blinkAnim2, {
+                        toValue: 1,
+                        duration: 150,
+                        useNativeDriver: false,
+                    }),
                     Animated.timing(glowAnim1, {
-                        toValue: 0.3,
+                        toValue: 0.5,
                         duration: 150,
                         useNativeDriver: false,
                     }),
                     Animated.timing(glowAnim2, {
-                        toValue: 0.3,
+                        toValue: 0.5,
                         duration: 150,
                         useNativeDriver: false,
-                    }),
-                    Animated.timing(scaleAnim1, {
-                        toValue: 0.2,
-                        duration: 150,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(scaleAnim2, {
-                        toValue: 0.2,
-                        duration: 150,
-                        useNativeDriver: true,
                     }),
                 ]),
-                // Eyes closed
-                Animated.delay(200),
-                // Eyes opening back
+
+                // Eyes fully closed
+                Animated.delay(100),
+
+                // Phase 2: Eyelid opening (top and bottom separating)
                 Animated.parallel([
+                    Animated.timing(blinkAnim1, {
+                        toValue: 0,
+                        duration: 150,
+                        useNativeDriver: false,
+                    }),
+                    Animated.timing(blinkAnim2, {
+                        toValue: 0,
+                        duration: 150,
+                        useNativeDriver: false,
+                    }),
                     Animated.timing(glowAnim1, {
                         toValue: 1,
                         duration: 150,
@@ -60,16 +62,6 @@ export default function Eyes() {
                         toValue: 1,
                         duration: 150,
                         useNativeDriver: false,
-                    }),
-                    Animated.timing(scaleAnim1, {
-                        toValue: 1,
-                        duration: 150,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(scaleAnim2, {
-                        toValue: 1,
-                        duration: 150,
-                        useNativeDriver: true,
                     }),
                 ]),
             ])
@@ -78,65 +70,81 @@ export default function Eyes() {
         blinkAnimation.start();
 
         return () => blinkAnimation.stop();
-    }, [glowAnim1, glowAnim2, scaleAnim1, scaleAnim2]);
+    }, [blinkAnim1, blinkAnim2, glowAnim1, glowAnim2]);
 
-    // Glow shadow effect
-    const glowShadow1 = glowAnim1.interpolate({
+    // Eyelid height - when blink is 0, height is full; when blink is 1, height is 0 (closed)
+    const eyelidHeight1 = blinkAnim1.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, 30],
+        outputRange: [150, 0],
     });
 
-    const glowShadow2 = glowAnim2.interpolate({
+    const eyelidHeight2 = blinkAnim2.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, 30],
+        outputRange: [150, 0],
+    });
+
+    // Glow shadow effect
+    const shadowRadius1 = glowAnim1.interpolate({
+        inputRange: [0.5, 1],
+        outputRange: [10, 40],
+    });
+
+    const shadowRadius2 = glowAnim2.interpolate({
+        inputRange: [0.5, 1],
+        outputRange: [10, 40],
     });
 
     return (
         <View style={styles.container}>
             {/* Left Eye */}
-            <Animated.View
-                style={[
-                    styles.eyeContainer,
-                    {
-                        transform: [{ scale: scaleAnim1 }],
-                    },
-                ]}
-            >
+            <View style={styles.eyeWrapper}>
                 <Animated.View
                     style={[
-                        styles.eyeGlow,
+                        styles.eyeContainer,
                         {
-                            shadowRadius: glowShadow1,
-                            shadowOpacity: glowAnim1,
+                            height: eyelidHeight1,
+                            opacity: glowAnim1,
                         },
                     ]}
                 >
-                    <View style={styles.eye} />
+                    <Animated.View
+                        style={[
+                            styles.eyeGlow,
+                            {
+                                shadowRadius: shadowRadius1,
+                                shadowOpacity: glowAnim1,
+                            },
+                        ]}
+                    >
+                        <View style={styles.eye} />
+                    </Animated.View>
                 </Animated.View>
-            </Animated.View>
+            </View>
 
             {/* Right Eye */}
-            <Animated.View
-                style={[
-                    styles.eyeContainer,
-                    {
-                        transform: [{ scale: scaleAnim2 }],
-                        marginLeft: 80,
-                    },
-                ]}
-            >
+            <View style={styles.eyeWrapper}>
                 <Animated.View
                     style={[
-                        styles.eyeGlow,
+                        styles.eyeContainer,
                         {
-                            shadowRadius: glowShadow2,
-                            shadowOpacity: glowAnim2,
+                            height: eyelidHeight2,
+                            opacity: glowAnim2,
                         },
                     ]}
                 >
-                    <View style={styles.eye} />
+                    <Animated.View
+                        style={[
+                            styles.eyeGlow,
+                            {
+                                shadowRadius: shadowRadius2,
+                                shadowOpacity: glowAnim2,
+                            },
+                        ]}
+                    >
+                        <View style={styles.eye} />
+                    </Animated.View>
                 </Animated.View>
-            </Animated.View>
+            </View>
         </View>
     );
 }
@@ -149,26 +157,33 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         flexDirection: 'row',
     },
-    eyeContainer: {
+    eyeWrapper: {
+        marginHorizontal: 60,
         justifyContent: 'center',
         alignItems: 'center',
     },
+    eyeContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
     eyeGlow: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        width: 140,
+        height: 140,
+        borderRadius: 70,
         backgroundColor: '#00BFFF',
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#00BFFF',
         shadowOffset: { width: 0, height: 0 },
+        elevation: 20,
     },
     eye: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+        width: 110,
+        height: 110,
+        borderRadius: 55,
         backgroundColor: '#00D9FF',
-        borderWidth: 2,
+        borderWidth: 3,
         borderColor: '#0099CC',
     },
 });

@@ -4,15 +4,6 @@
     "slug": "aiRob",
     "version": "1.0.0",
     "assetBundlePatterns": ["**/*"],
-    "plugins": [
-      [
-        "expo-media-library",
-        {
-          "photosPermission": "Allow aiRob to access your photos.",
-          "savePhotosPermission": "Allow aiRob to save photos."
-        }
-      ]
-    ],
     "android": {
       "permissions": [
         "android.permission.RECORD_AUDIO",

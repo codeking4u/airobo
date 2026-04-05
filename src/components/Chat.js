@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import * as Speech from 'expo-speech';
-import Voice from 'react-native-voice';
+import * as Permissions from 'expo-permissions';
+import Voice from '@react-native-community/voice';
 
 export default function Chat({ onListeningStateChange, onSpeakingStateChange }) {
     const [isListening, setIsListening] = useState(false);
@@ -87,6 +88,11 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
     };
 
     useEffect(() => {
+        // Initialize Voice Recognition listeners
+        Voice.onSpeechStart = () => {
+            console.log('Speech recognition started');
+        };
+
         Voice.onSpeechResults = (e) => {
             if (e.value && e.value.length > 0) {
                 const userInput = e.value[0];
@@ -102,7 +108,7 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
         };
 
         Voice.onSpeechError = (e) => {
-            console.error('Speech recognition error:', e);
+            console.error('Speech recognition error:', e.error);
             recognitionStartedRef.current = false;
             setIsListening(false);
             onListeningStateChange(false);
@@ -110,19 +116,44 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
             // Restart listening after error
             setTimeout(() => {
                 startListening();
-            }, 1000);
+            }, 2000);
         };
 
         Voice.onSpeechEnd = () => {
+            console.log('Speech recognition ended');
             recognitionStartedRef.current = false;
+            // Restart listening
+            setTimeout(() => {
+                startListening();
+            }, 500);
         };
-
-        // Start listening when component mounts
-        startListening();
 
         return () => {
             Voice.destroy().catch(() => { });
         };
+    }, []);
+
+    // Start listening on component mount after a short delay
+    useEffect(() => {
+        const requestPermissionsAndStart = async () => {
+            try {
+                const { status } = await Permissions.askAsync(Permissions.AUDIO_RECORDING);
+                console.log('Microphone permission status:', status);
+
+                if (status === 'granted') {
+                    const timer = setTimeout(() => {
+                        startListening();
+                    }, 1000);
+                    return () => clearTimeout(timer);
+                } else {
+                    console.warn('Microphone permission not granted');
+                }
+            } catch (error) {
+                console.error('Permission request error:', error);
+            }
+        };
+
+        requestPermissionsAndStart();
     }, []);
 
     // Don't render anything - this is a background listener component

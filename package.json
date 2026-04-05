@@ -10,15 +10,16 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@react-native-community/voice": "^1.1.9",
     "@types/react": "~18.2.14",
     "expo": "^49.0.23",
     "expo-cli": "^6.3.12",
+    "expo-permissions": "^14.4.0",
     "expo-screen-orientation": "^55.0.11",
     "expo-speech": "^55.0.11",
     "lottie-react-native": "5.1.6",
     "react": "18.2.0",
-    "react-native": "0.72.10",
-    "react-native-voice": "^0.3.0"
+    "react-native": "0.72.10"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

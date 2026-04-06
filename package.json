@@ -7,6 +7,9 @@
     "clean": "rm -Force package-lock.json -ErrorAction SilentlyContinue; rm -Force -Recurse node_modules -ErrorAction SilentlyContinue; npm install --legacy-peer-deps",
     "dev": "npx expo start --clear --localhost",
     "dev-no-clear": "npx expo start --localhost",
+    "build-local": "npx eas build --platform android --local --wait",
+    "build-cloud": "npx eas build --platform android",
+    "prebuild": "npx expo prebuild --clean",
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "start": "npx expo start --localhost",
@@ -15,7 +18,7 @@
   },
   "dependencies": {
     "@types/react": "~18.0.27",
-    "expo": "^50.0.21",
+    "expo": "^55.0.11",
     "expo-cli": "^6.3.12",
     "expo-permissions": "~14.1.1",
     "expo-screen-orientation": "~5.1.1",

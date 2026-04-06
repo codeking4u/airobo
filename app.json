@@ -20,6 +20,11 @@
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app needs access to your microphone to listen and chat with Looi Robo."
       }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "34e3989e-384e-427b-8eb3-def3584ea6c4"
+      }
     }
   }
 }

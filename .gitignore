@@ -35,3 +35,6 @@ ios/Pods/
 
 # Watchman
 watchman.log
+
+android/
+ios/

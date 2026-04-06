@@ -24,6 +24,7 @@
     "expo-screen-orientation": "~55.0.11",
     "expo-speech": "~55.0.11",
     "expo-speech-recognition": "^3.1.2",
+    "openai": "^6.33.0",
     "react": "19.2.0",
     "react-native": "0.83.4"
   },

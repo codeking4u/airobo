@@ -17,7 +17,6 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@react-native-voice/voice": "^3.2.4",
     "@types/react": "~19.2.10",
     "babel-preset-expo": "~55.0.8",
     "expo": "^55.0.11",

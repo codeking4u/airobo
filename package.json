@@ -3,9 +3,13 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "setup": "npm install --legacy-peer-deps",
+    "clean": "rm -Force package-lock.json -ErrorAction SilentlyContinue; rm -Force -Recurse node_modules -ErrorAction SilentlyContinue; npm install --legacy-peer-deps",
+    "dev": "npx expo start --clear --localhost",
+    "dev-no-clear": "npx expo start --localhost",
     "android": "react-native run-android",
     "ios": "react-native run-ios",
-    "start": "react-native start",
+    "start": "npx expo start --localhost",
     "test": "jest",
     "lint": "eslint ."
   },

@@ -17,11 +17,13 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@react-native-voice/voice": "^3.2.4",
     "@types/react": "~19.2.10",
     "babel-preset-expo": "~55.0.8",
     "expo": "^55.0.11",
     "expo-screen-orientation": "~55.0.11",
     "expo-speech": "~55.0.11",
+    "expo-speech-recognition": "^3.1.2",
     "react": "19.2.0",
     "react-native": "0.83.4"
   },

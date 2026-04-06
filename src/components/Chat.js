@@ -1,105 +1,145 @@
 import React, { useEffect, useState, useRef } from 'react';
 import * as Speech from 'expo-speech';
 import { getAIResponse, initializeOpenAI } from '../services/openaiService';
+import {
+  initializeSpeechRecognition,
+  startListening,
+  stopListening,
+  abortListening,
+} from '../services/voiceRecognitionService';
 
 export default function Chat({ onListeningStateChange, onSpeakingStateChange }) {
-    const [isSpeaking, setIsSpeaking] = useState(false);
-    const [isListening, setIsListening] = useState(false);
-    const [conversationHistory, setConversationHistory] = useState([]);
-    const initializedRef = useRef(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [currentTranscript, setCurrentTranscript] = useState('');
+  const initializedRef = useRef(false);
 
-    // Initialize OpenAI
-    useEffect(() => {
-        if (!initializedRef.current) {
-            const initialized = initializeOpenAI();
-            initializedRef.current = true;
-            if (!initialized) {
-                console.warn('Chat: OpenAI not initialized - check EXPO_PUBLIC_OPENAI_API_KEY');
-            }
-        }
-    }, []);
+  // Initialize on mount
+  useEffect(() => {
+    const initialize = async () => {
+      if (!initializedRef.current) {
+        initializedRef.current = true;
 
-    const speak = async (text) => {
-        setIsSpeaking(true);
-        onSpeakingStateChange(true);
-        try {
-            await Speech.speak(text, {
-                language: 'en',
-                rate: 1,
-                pitch: 1.1,
-            });
-        } catch (error) {
-            console.error('TTS Error:', error);
-        } finally {
-            setIsSpeaking(false);
-            onSpeakingStateChange(false);
+        // Initialize OpenAI
+        const oaiInitialized = initializeOpenAI();
+        console.log('[Looi] OpenAI initialized:', oaiInitialized);
+
+        // Initialize speech recognition permissions
+        const speechPermission = await initializeSpeechRecognition();
+        setPermissionGranted(speechPermission);
+        console.log('[Looi] Speech permission granted:', speechPermission);
+
+        if (speechPermission) {
+          // Start listening after a short delay
+          setTimeout(() => {
+            beginListening();
+          }, 1000);
         }
+      }
     };
 
-    const handleUserInput = async (transcript) => {
-        if (!transcript || transcript.trim().length === 0) {
-            return;
-        }
+    initialize();
+  }, []);
 
-        try {
-            setIsListening(false);
-            onListeningStateChange(false);
+  const speak = async (text) => {
+    return new Promise((resolve) => {
+      setIsSpeaking(true);
+      onSpeakingStateChange(true);
 
-            // Add user message to history
-            const updatedHistory = [
-                ...conversationHistory,
-                { role: 'user', content: transcript },
-            ];
+      Speech.speak(text, {
+        language: 'en',
+        rate: 1,
+        pitch: 1.1,
+        onDone: () => {
+          setIsSpeaking(false);
+          onSpeakingStateChange(false);
+          resolve();
+        },
+        onError: (error) => {
+          console.error('TTS Error:', error);
+          setIsSpeaking(false);
+          onSpeakingStateChange(false);
+          resolve();
+        },
+      });
+    });
+  };
 
-            // Get AI response
-            const aiResponse = await getAIResponse(transcript, conversationHistory);
+  const handleSpeechResult = async (result) => {
+    if (!result.isFinal) {
+      setCurrentTranscript(result.value[0] || '');
+      return;
+    }
 
-            // Update history with AI response
-            setConversationHistory([
-                ...updatedHistory,
-                { role: 'assistant', content: aiResponse },
-            ]);
+    // Final result received
+    const transcript = result.value[0] || '';
+    console.log('[Looi] Recognized:', transcript);
 
-            // Speak the response
-            await speak(aiResponse);
+    if (transcript.trim()) {
+      await processUserInput(transcript);
+    }
 
-            // Resume listening after speaking
-            setTimeout(() => {
-                startListening();
-            }, 1000);
-        } catch (error) {
-            console.error('Chat Error:', error);
-            await speak('Sorry, I had an error. Let me try again.');
-            startListening();
-        }
-    };
+    // Reset and start listening again
+    setCurrentTranscript('');
+    setTimeout(() => {
+      beginListening();
+    }, 500);
+  };
 
-    const startListening = async () => {
-        if (isSpeaking) return;
+  const handleSpeechError = (error) => {
+    console.error('[Looi] Speech error:', error);
+    setIsListening(false);
+    onListeningStateChange(false);
 
-        setIsListening(true);
-        onListeningStateChange(true);
+    // Retry listening
+    setTimeout(() => {
+      beginListening();
+    }, 1000);
+  };
 
-        // TODO: Integrate with actual speech recognition library
-        // For MVP testing, you can manually provide transcription:
-        // handleUserInput("Hello, how are you?");
+  const processUserInput = async (transcript) => {
+    try {
+      await stopListening();
+      setIsListening(false);
+      onListeningStateChange(false);
 
-        console.log('[Looi] Listening...');
-    };
+      // Add to history
+      const updatedHistory = [
+        ...conversationHistory,
+        { role: 'user', content: transcript },
+      ];
 
-    // Start listening on mount
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            startListening();
-        }, 2000);
+      // Get AI response
+      console.log('[Looi] Sending to OpenAI...');
+      const aiResponse = await getAIResponse(transcript, conversationHistory);
+      console.log('[Looi] Response:', aiResponse);
 
-        return () => clearTimeout(timer);
-    }, [isSpeaking]);
+      // Update history
+      setConversationHistory([
+        ...updatedHistory,
+        { role: 'assistant', content: aiResponse },
+      ]);
 
-    // Export handleUserInput for testing/manual input
-    useEffect(() => {
-        global.looi = { handleUserInput };
-    }, [conversationHistory]);
+      // Speak response
+      await speak(aiResponse);
+    } catch (error) {
+      console.error('[Looi] Error:', error);
+      await speak('Sorry, I had an error. Can you say that again?');
+    }
+  };
 
-    return null;
-}
+  const beginListening = async () => {
+    if (isSpeaking || !permissionGranted) {
+      console.log('[Looi] Cannot start listening - speaking:', isSpeaking, 'permission:', permissionGranted);
+      return;
+    }
+
+    setIsListening(true);
+    onListeningStateChange(true);
+    setCurrentTranscript('');
+
+    console.log('[Looi] Listening...');
+    startListening(handleSpeechResult, handleSpeechError);
+  };

@@ -131,11 +131,20 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
     };
 
     const beginListening = async () => {
-        if (isSpeaking || !permissionGranted) {
-            console.log('[Looi] Cannot start listening - speaking:', isSpeaking, 'permission:', permissionGranted);
+        if (isSpeaking) {
             return;
         }
 
+        // Re-check permission each time (in case it was granted in settings)
+        const currentPermission = await initializeSpeechRecognition();
+
+        if (!currentPermission) {
+            console.log('[Looi] Cannot start listening - permission not granted');
+            setPermissionGranted(false);
+            return;
+        }
+
+        setPermissionGranted(true);
         setIsListening(true);
         onListeningStateChange(true);
         setCurrentTranscript('');

@@ -12,8 +12,10 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
     const isSpeakingRef = useRef(false);
     const isProcessingRef = useRef(false);
     const errorCountRef = useRef(0);
+    const networkErrorCountRef = useRef(0);
     const permissionRef = useRef(false);
     const listeningRef = useRef(false);
+    const useOnDeviceRef = useRef(false);  // fallback flag
 
     // ── Speech Recognition Events ──────────────────────────────
 
@@ -36,6 +38,18 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
 
         // Don't restart if we're speaking or processing
         if (isSpeakingRef.current || isProcessingRef.current) return;
+
+        // Track network errors specifically
+        if (event.error === 'network') {
+            networkErrorCountRef.current += 1;
+            console.log('[Looi] Network error count:', networkErrorCountRef.current);
+
+            // After 2 network errors, switch to on-device recognition
+            if (networkErrorCountRef.current >= 2 && !useOnDeviceRef.current) {
+                console.log('[Looi] Switching to on-device recognition');
+                useOnDeviceRef.current = true;
+            }
+        }
 
         // Back off on repeated errors
         const delay = Math.min(2000 * (errorCountRef.current + 1), 10000);
@@ -72,6 +86,12 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
             await speak(greeting);
 
             if (perm) {
+                // Check if on-device recognition is available
+                try {
+                    const onDeviceAvailable = await ExpoSpeechRecognitionModule.isRecognitionAvailable();
+                    console.log('[Looi] Recognition available:', onDeviceAvailable);
+                } catch (_) { }
+
                 // Force-reset all refs before first listen attempt
                 isSpeakingRef.current = false;
                 isProcessingRef.current = false;
@@ -210,12 +230,13 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
         onListeningStateChange(true);
 
         try {
-            ExpoSpeechRecognitionModule.start({
+            const options = {
                 lang: 'en-US',
                 interimResults: true,
-                continuous: true,          // Stay listening – no repeated start/stop sounds
-                requiresOnDeviceRecognition: false,
-            });
+                requiresOnDeviceRecognition: useOnDeviceRef.current,
+            };
+            console.log('[Looi] Starting speech recognition, onDevice:', useOnDeviceRef.current);
+            ExpoSpeechRecognitionModule.start(options);
             console.log('[Looi] Speech recognition started successfully');
             // Reset error count on successful start
             errorCountRef.current = 0;

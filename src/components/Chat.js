@@ -72,7 +72,12 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
             await speak(greeting);
 
             if (perm) {
-                setTimeout(() => beginListening(), 600);
+                // Force-reset all refs before first listen attempt
+                isSpeakingRef.current = false;
+                isProcessingRef.current = false;
+                listeningRef.current = false;
+                console.log('[Looi] Starting to listen...');
+                setTimeout(() => beginListening(), 800);
             }
         };
 
@@ -186,8 +191,11 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
     // ── Start Listening ────────────────────────────────────────
 
     const beginListening = async () => {
+        console.log('[Looi] beginListening called - speaking:', isSpeakingRef.current, 'processing:', isProcessingRef.current, 'listening:', listeningRef.current);
+        
         // Guard: don't start if speaking, processing, or already listening
         if (isSpeakingRef.current || isProcessingRef.current || listeningRef.current) {
+            console.log('[Looi] Skipping listen - busy');
             return;
         }
 
@@ -208,6 +216,7 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
                 continuous: true,          // Stay listening – no repeated start/stop sounds
                 requiresOnDeviceRecognition: false,
             });
+            console.log('[Looi] Speech recognition started successfully');
             // Reset error count on successful start
             errorCountRef.current = 0;
         } catch (error) {

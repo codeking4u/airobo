@@ -14,7 +14,8 @@
     "ios": "expo run:ios",
     "start": "npx expo start --localhost",
     "test": "jest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "apk":"npx expo prebuild --clean && cd android && gradlew.bat assembleRelease && cd ."
   },
   "dependencies": {
     "@types/react": "~19.2.10",

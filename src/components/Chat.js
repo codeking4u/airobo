@@ -192,7 +192,7 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
 
     const beginListening = async () => {
         console.log('[Looi] beginListening called - speaking:', isSpeakingRef.current, 'processing:', isProcessingRef.current, 'listening:', listeningRef.current);
-        
+
         // Guard: don't start if speaking, processing, or already listening
         if (isSpeakingRef.current || isProcessingRef.current || listeningRef.current) {
             console.log('[Looi] Skipping listen - busy');

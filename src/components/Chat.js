@@ -81,40 +81,62 @@ export default function Chat({ onListeningStateChange, onSpeakingStateChange }) 
             permissionRef.current = perm;
             console.log('[Looi] Speech permission:', perm);
 
-            // Speak a startup greeting so user knows what's working
-            const greeting = buildGreeting(oaiOk, perm);
+            // Check what speech recognition capabilities are available
+            let speechAvailable = false;
+            let onDeviceSupported = false;
+            try {
+                speechAvailable = await ExpoSpeechRecognitionModule.isRecognitionAvailable();
+                console.log('[Looi] Speech recognition available:', speechAvailable);
+            } catch (e) {
+                console.warn('[Looi] Recognition check failed:', e);
+            }
+
+            try {
+                const supported = await ExpoSpeechRecognitionModule.supportsOnDeviceRecognition();
+                onDeviceSupported = !!supported;
+                console.log('[Looi] On-device recognition supported:', onDeviceSupported);
+            } catch (e) {
+                console.warn('[Looi] On-device check failed:', e);
+            }
+
+            // Prefer on-device to avoid network errors
+            if (onDeviceSupported) {
+                useOnDeviceRef.current = true;
+                console.log('[Looi] Will use on-device recognition');
+            }
+
+            // Build and speak greeting
+            const greeting = buildGreeting(oaiOk, perm, speechAvailable);
             await speak(greeting);
 
-            if (perm) {
-                // Check if on-device recognition is available
-                try {
-                    const onDeviceAvailable = await ExpoSpeechRecognitionModule.isRecognitionAvailable();
-                    console.log('[Looi] Recognition available:', onDeviceAvailable);
-                } catch (_) { }
-
+            if (perm && speechAvailable) {
                 // Force-reset all refs before first listen attempt
                 isSpeakingRef.current = false;
                 isProcessingRef.current = false;
                 listeningRef.current = false;
                 console.log('[Looi] Starting to listen...');
                 setTimeout(() => beginListening(), 800);
+            } else if (perm && !speechAvailable) {
+                console.error('[Looi] Speech recognition not available on this device');
             }
         };
 
         initialize();
     }, []);
 
-    const buildGreeting = (oaiOk, micOk) => {
+    const buildGreeting = (oaiOk, micOk, speechOk) => {
+        if (!speechOk) {
+            return "Hi, I'm Looi. Speech recognition is not available on this device. Please install Google app or Speech Services.";
+        }
         if (oaiOk && micOk) {
             return "Hi! I'm Looi. Everything is ready. Talk to me!";
         }
         if (!oaiOk && !micOk) {
-            return "Hi, I'm Looi. Hmm, I can't hear you and I can't think. Microphone and AI are not connected.";
+            return "Hi, I'm Looi. Microphone and AI are not connected.";
         }
         if (!micOk) {
             return "Hi, I'm Looi. I'm connected to AI, but I can't hear you. Please allow microphone access.";
         }
-        // !oaiOk
         return "Hi, I'm Looi. I can hear you, but my brain isn't connected. Please check the API key.";
     };
 

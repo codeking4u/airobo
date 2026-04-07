@@ -1,8 +1,14 @@
-import * as ExpoSpeechRecognition from 'expo-speech-recognition';
+import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 
 export const initializeSpeechRecognition = async () => {
   try {
-    const result = await ExpoSpeechRecognition.requestPermissionsAsync();
+    const result = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+
+    if (!result.granted) {
+      const newResult = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      return newResult.granted;
+    }
+
     return result.granted;
   } catch (error) {
     console.error('Permission request failed:', error);
@@ -10,35 +16,17 @@ export const initializeSpeechRecognition = async () => {
   }
 };
 
-export const startListening = async (onResult, onError) => {
-  try {
-    await ExpoSpeechRecognition.start({
-      lang: 'en-US',
-      maxResults: 1,
-      interimResults: true,
-    });
-
-    // Setup event listeners
-    ExpoSpeechRecognition.addRecognitionResultsListener(onResult);
-    ExpoSpeechRecognition.addRecognitionErrorListener(onError);
-  } catch (error) {
-    console.error('Start listening failed:', error);
-    onError(error);
-  }
+export const startListening = () => {
+  ExpoSpeechRecognitionModule.start({
+    lang: 'en-US',
+    interimResults: true,
+  });
 };
 
-export const stopListening = async () => {
-  try {
-    await ExpoSpeechRecognition.stop();
-  } catch (error) {
-    console.error('Stop listening failed:', error);
-  }
+export const stopListening = () => {
+  ExpoSpeechRecognitionModule.stop();
 };
 
-export const abortListening = async () => {
-  try {
-    await ExpoSpeechRecognition.abort();
-  } catch (error) {
-    console.error('Abort listening failed:', error);
-  }
+export const abortListening = () => {
+  ExpoSpeechRecognitionModule.abort();
 };

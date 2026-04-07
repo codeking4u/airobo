@@ -2,156 +2,197 @@ import React, { useEffect, useState, useRef } from 'react';
 import * as Speech from 'expo-speech';
 import { getAIResponse, initializeOpenAI } from '../services/openaiService';
 import {
-    initializeSpeechRecognition,
-    startListening,
-    stopListening,
-    abortListening,
-} from '../services/voiceRecognitionService';
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
 
 export default function Chat({ onListeningStateChange, onSpeakingStateChange }) {
-    const [isSpeaking, setIsSpeaking] = useState(false);
-    const [isListening, setIsListening] = useState(false);
-    const [conversationHistory, setConversationHistory] = useState([]);
-    const [permissionGranted, setPermissionGranted] = useState(false);
-    const [currentTranscript, setCurrentTranscript] = useState('');
-    const initializedRef = useRef(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [currentTranscript, setCurrentTranscript] = useState('');
+  const initializedRef = useRef(false);
+  const isSpeakingRef = useRef(false);
 
-    // Initialize on mount
-    useEffect(() => {
-        const initialize = async () => {
-            if (!initializedRef.current) {
-                initializedRef.current = true;
+  // Listen for speech recognition results
+  useSpeechRecognitionEvent('result', (event) => {
+    const transcript = event.results[0]?.transcript || '';
 
-                // Initialize OpenAI
-                const oaiInitialized = initializeOpenAI();
-                console.log('[Looi] OpenAI initialized:', oaiInitialized);
+    if (event.isFinal) {
+      console.log('[Looi] Recognized:', transcript);
+      if (transcript.trim()) {
+        processUserInput(transcript);
+      }
+      setCurrentTranscript('');
+    } else {
+      setCurrentTranscript(transcript);
+    }
+  });
 
-                // Initialize speech recognition permissions
-                const speechPermission = await initializeSpeechRecognition();
-                setPermissionGranted(speechPermission);
-                console.log('[Looi] Speech permission granted:', speechPermission);
+  // Listen for speech recognition errors
+  useSpeechRecognitionEvent('error', (event) => {
+    console.error('[Looi] Speech error:', event.error);
+    setIsListening(false);
+    onListeningStateChange(false);
 
-                if (speechPermission) {
-                    // Start listening after a short delay
-                    setTimeout(() => {
-                        beginListening();
-                    }, 1000);
-                }
-            }
-        };
+    // Retry listening
+    setTimeout(() => {
+      beginListening();
+    }, 1000);
+  });
 
-        initialize();
-    }, []);
+  // Listen for speech recognition end
+  useSpeechRecognitionEvent('end', () => {
+    console.log('[Looi] Speech recognition ended');
+    setIsListening(false);
+    onListeningStateChange(false);
 
-    const speak = async (text) => {
-        return new Promise((resolve) => {
-            setIsSpeaking(true);
-            onSpeakingStateChange(true);
+    // Restart listening if not speaking
+    if (!isSpeakingRef.current) {
+      setTimeout(() => {
+        beginListening();
+      }, 500);
+    }
+  });
 
-            Speech.speak(text, {
-                language: 'en',
-                rate: 1,
-                pitch: 1.1,
-                onDone: () => {
-                    setIsSpeaking(false);
-                    onSpeakingStateChange(false);
-                    resolve();
-                },
-                onError: (error) => {
-                    console.error('TTS Error:', error);
-                    setIsSpeaking(false);
-                    onSpeakingStateChange(false);
-                    resolve();
-                },
-            });
-        });
-    };
+  // Initialize on mount
+  useEffect(() => {
+    const initialize = async () => {
+      if (!initializedRef.current) {
+        initializedRef.current = true;
 
-    const handleSpeechResult = async (result) => {
-        if (!result.isFinal) {
-            setCurrentTranscript(result.value[0] || '');
-            return;
-        }
+        // Initialize OpenAI
+        const oaiInitialized = initializeOpenAI();
+        console.log('[Looi] OpenAI initialized:', oaiInitialized);
 
-        // Final result received
-        const transcript = result.value[0] || '';
-        console.log('[Looi] Recognized:', transcript);
+        // Initialize speech recognition permissions
+        const speechPermission = await requestPermissions();
+        setPermissionGranted(speechPermission);
+        console.log('[Looi] Speech permission granted:', speechPermission);
 
-        if (transcript.trim()) {
-            await processUserInput(transcript);
-        }
-
-        // Reset and start listening again
-        setCurrentTranscript('');
-        setTimeout(() => {
+        if (speechPermission) {
+          setTimeout(() => {
             beginListening();
-        }, 500);
+          }, 1000);
+        }
+      }
     };
 
-    const handleSpeechError = (error) => {
-        console.error('[Looi] Speech error:', error);
-        setIsListening(false);
-        onListeningStateChange(false);
+    initialize();
+  }, []);
 
-        // Retry listening
-        setTimeout(() => {
+  const requestPermissions = async () => {
+    try {
+      const result = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+
+      if (!result.granted) {
+        const newResult = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+        return newResult.granted;
+      }
+
+      return result.granted;
+    } catch (error) {
+      console.error('[Looi] Permission request failed:', error);
+      return false;
+    }
+  };
+
+  const speak = async (text) => {
+    return new Promise((resolve) => {
+      setIsSpeaking(true);
+      isSpeakingRef.current = true;
+      onSpeakingStateChange(true);
+
+      Speech.speak(text, {
+        language: 'en',
+        rate: 1,
+        pitch: 1.1,
+        onDone: () => {
+          setIsSpeaking(false);
+          isSpeakingRef.current = false;
+          onSpeakingStateChange(false);
+          resolve();
+
+          // Resume listening after speaking
+          setTimeout(() => {
             beginListening();
-        }, 1000);
-    };
+          }, 500);
+        },
+        onError: (error) => {
+          console.error('[Looi] TTS Error:', error);
+          setIsSpeaking(false);
+          isSpeakingRef.current = false;
+          onSpeakingStateChange(false);
+          resolve();
+        },
+      });
+    });
+  };
 
-    const processUserInput = async (transcript) => {
-        try {
-            await stopListening();
-            setIsListening(false);
-            onListeningStateChange(false);
+  const processUserInput = async (transcript) => {
+    try {
+      // Stop listening while processing
+      ExpoSpeechRecognitionModule.stop();
+      setIsListening(false);
+      onListeningStateChange(false);
 
-            // Add to history
-            const updatedHistory = [
-                ...conversationHistory,
-                { role: 'user', content: transcript },
-            ];
+      // Add to history
+      const updatedHistory = [
+        ...conversationHistory,
+        { role: 'user', content: transcript },
+      ];
 
-            // Get AI response
-            console.log('[Looi] Sending to OpenAI...');
-            const aiResponse = await getAIResponse(transcript, conversationHistory);
-            console.log('[Looi] Response:', aiResponse);
+      // Get AI response
+      console.log('[Looi] Sending to OpenAI...');
+      const aiResponse = await getAIResponse(transcript, conversationHistory);
+      console.log('[Looi] Response:', aiResponse);
 
-            // Update history
-            setConversationHistory([
-                ...updatedHistory,
-                { role: 'assistant', content: aiResponse },
-            ]);
+      // Update history
+      setConversationHistory([
+        ...updatedHistory,
+        { role: 'assistant', content: aiResponse },
+      ]);
 
-            // Speak response
-            await speak(aiResponse);
-        } catch (error) {
-            console.error('[Looi] Error:', error);
-            await speak('Sorry, I had an error. Can you say that again?');
-        }
-    };
+      // Speak response
+      await speak(aiResponse);
+    } catch (error) {
+      console.error('[Looi] Error:', error);
+      await speak('Sorry, I had an error. Can you say that again?');
+    }
+  };
 
-    const beginListening = async () => {
-        if (isSpeaking) {
-            return;
-        }
+  const beginListening = async () => {
+    if (isSpeakingRef.current) {
+      return;
+    }
 
-        // Re-check permission each time (in case it was granted in settings)
-        const currentPermission = await initializeSpeechRecognition();
+    const currentPermission = await requestPermissions();
 
-        if (!currentPermission) {
-            console.log('[Looi] Cannot start listening - permission not granted');
-            setPermissionGranted(false);
-            return;
-        }
+    if (!currentPermission) {
+      console.log('[Looi] Cannot start listening - permission not granted');
+      setPermissionGranted(false);
+      return;
+    }
 
-        setPermissionGranted(true);
-        setIsListening(true);
-        onListeningStateChange(true);
-        setCurrentTranscript('');
+    setPermissionGranted(true);
+    setIsListening(true);
+    onListeningStateChange(true);
+    setCurrentTranscript('');
 
-        console.log('[Looi] Listening...');
-        startListening(handleSpeechResult, handleSpeechError);
-    };
+    console.log('[Looi] Listening...');
 
-    return null;
+    try {
+      ExpoSpeechRecognitionModule.start({
+        lang: 'en-US',
+        interimResults: true,
+      });
+    } catch (error) {
+      console.error('[Looi] Start listening failed:', error);
+      setIsListening(false);
+      onListeningStateChange(false);
+    }
+  };
+
+  return null;
 }

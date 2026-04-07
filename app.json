@@ -11,17 +11,24 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.INTERNET"
       ],
-      "package": "com.anonymous.aiRob",
-      "compileSdkVersion": 34,
-      "targetSdkVersion": 34,
-      "minSdkVersion": 24
+      "package": "com.anonymous.aiRob"
     },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "This app needs access to your microphone to listen and chat with Looi Robo."
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone to listen and chat with Looi Robo.",
+        "NSSpeechRecognitionUsageDescription": "This app uses speech recognition to understand your voice."
       }
     },
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow this app to use the microphone for speech recognition",
+          "speechRecognitionPermission": "Allow this app to use speech recognition"
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "34e3989e-384e-427b-8eb3-def3584ea6c4"
